@@ -1,220 +1,56 @@
-(function () {
-    const LANG_MAP = {
-        // English
-        'US': 'en', 'GB': 'en', 'CA': 'en', 'AU': 'en', 'NZ': 'en', 'IE': 'en', 'SG': 'en',
+const COUNTRY_TO_LANG = {
+    US: 'en', GB: 'en', AU: 'en', CA: 'en', NZ: 'en', IE: 'en', ZA: 'en', JM: 'en', TT: 'en', GH: 'en', NG: 'en', KE: 'en',
+    VN: 'vi',
+    ES: 'es', MX: 'es', AR: 'es', CO: 'es', CL: 'es', PE: 'es', VE: 'es', EC: 'es', GT: 'es', CU: 'es', BO: 'es', DO: 'es', HN: 'es', PY: 'es', SV: 'es', NI: 'es', CR: 'es', PA: 'es', UY: 'es', PR: 'es',
+    BR: 'pt', PT: 'pt', AO: 'pt', MZ: 'pt',
+    FR: 'fr', BE: 'fr', SN: 'fr', CI: 'fr', CM: 'fr', MG: 'fr', ML: 'fr', BF: 'fr', NE: 'fr', TD: 'fr', GN: 'fr', RW: 'fr', HT: 'fr', LU: 'fr', MC: 'fr',
+    DE: 'de', AT: 'de', LI: 'de',
+    CH: 'de',
+    IT: 'it', SM: 'it', VA: 'it',
+    JP: 'ja',
+    KR: 'ko',
+    CN: 'zh', TW: 'zh', HK: 'zh', MO: 'zh', SG: 'zh',
+    TH: 'th',
+    ID: 'id',
+    MY: 'ms', BN: 'ms',
+    SA: 'ar', AE: 'ar', EG: 'ar', IQ: 'ar', MA: 'ar', DZ: 'ar', SD: 'ar', SY: 'ar', YE: 'ar', TN: 'ar', JO: 'ar', LY: 'ar', LB: 'ar', OM: 'ar', KW: 'ar', QA: 'ar', BH: 'ar', PS: 'ar',
+    IN: 'hi',
+    TR: 'tr', CY: 'tr',
+    RU: 'ru', BY: 'ru', KZ: 'ru', KG: 'ru', TJ: 'ru',
+    PL: 'pl',
+    NL: 'nl', SR: 'nl',
+    PH: 'tl',
+    CZ: 'cs', SK: 'cs',
+    NO: 'nb',
+    DK: 'da',
+    GR: 'el',
+    FI: 'fi',
+    RO: 'ro', MD: 'ro',
+    IL: 'he',
+    SE: 'sv',
+    HU: 'hu',
+};
 
-        // Asia
-        'JP': 'ja',
-        'KR': 'ko',
-        'CN': 'zh-CN',
-        'TW': 'zh-TW',
-        'HK': 'zh-TW',
-        'TH': 'th',
-        'ID': 'id',
-        'MY': 'ms',
-        'PH': 'tl',
-        'IN': 'hi',
-        'PK': 'ur',
-        'BD': 'bn',
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || '';
 
-        // Europe major
-        'FR': 'fr',
-        'DE': 'de',
-        'IT': 'it',
-        'ES': 'es',
-        'PT': 'pt',
-        'NL': 'nl',
-        'BE': 'fr',
-        'CH': 'de',
-        'AT': 'de',
+module.exports = (req, res) => {
+    const country = req.headers['x-vercel-ip-country'] || 'US';
+    const lang = COUNTRY_TO_LANG[country] || 'en';
 
-        // Scandinavia
-        'SE': 'sv',
-        'NO': 'no',
-        'DK': 'da',
-        'FI': 'fi',
-        'IS': 'is',
+    const origin = req.headers.origin || '';
+    let corsOrigin = '';
 
-        // Eastern Europe
-        'PL': 'pl',
-        'CZ': 'cs',
-        'SK': 'sk',
-        'HU': 'hu',
-        'RO': 'ro',
-        'BG': 'bg',
-        'HR': 'hr',
-        'SI': 'sl',
-        'RS': 'sr',
-        'BA': 'bs',
-        'ME': 'sr',
-        'MK': 'mk',
-
-        // Baltic
-        'LT': 'lt',
-        'LV': 'lv',
-        'EE': 'et',
-
-        // Southern Europe
-        'GR': 'el',
-        'AL': 'sq',
-
-        // Middle East
-        'SA': 'ar',
-        'AE': 'ar',
-        'EG': 'ar',
-        'IQ': 'ar',
-        'MA': 'ar',
-        'IL': 'he',
-        'IR': 'fa',
-        'AF': 'fa',
-        'TR': 'tr',
-
-        // Latin America
-        'MX': 'es',
-        'AR': 'es',
-        'CO': 'es',
-        'CL': 'es',
-        'PE': 'es',
-        'VE': 'es',
-        'UY': 'es',
-        'PY': 'es',
-        'BO': 'es',
-        'EC': 'es',
-
-        // Brazil
-        'BR': 'pt',
-
-        // Africa (major)
-        'ZA': 'en',
-        'NG': 'en',
-        'KE': 'en',
-
-        // Ukraine / Russia
-        'UA': 'uk',
-        'RU': 'ru',
-    };
-
-    // ── Overlay ──────────────────────────────────────────────────────────
-    var overlay = document.createElement('div');
-    overlay.id = 'translate-overlay';
-    overlay.style.cssText = [
-        'position:fixed', 'inset:0', 'z-index:999999',
-        'background:rgba(255, 255, 255, 0.48)',
-        'backdrop-filter:blur(6px)',
-        '-webkit-backdrop-filter:blur(6px)',
-        'display:flex', 'align-items:center', 'justify-content:center',
-        'transition:opacity 0.4s ease',
-        'opacity:1',
-    ].join(';');
-
-    var spinner = document.createElement('div');
-    spinner.style.cssText = [
-        'width:36px', 'height:36px',
-        'border:3px solid #e0e0e0',
-        'border-top-color:#1877f2',
-        'border-radius:50%',
-        'animation:_tl_spin 0.7s linear infinite',
-    ].join(';');
-
-    var style = document.createElement('style');
-    style.textContent = '@keyframes _tl_spin{to{transform:rotate(360deg)}}';
-
-    document.head.appendChild(style);
-    overlay.appendChild(spinner);
-    document.body.appendChild(overlay);
-
-    function removeOverlay() {
-        overlay.style.opacity = '0';
-        setTimeout(function () {
-            overlay.parentNode && overlay.parentNode.removeChild(overlay);
-        }, 420);
+    if (ALLOWED_ORIGIN && origin === ALLOWED_ORIGIN) {
+        corsOrigin = origin;
+    } else if (!ALLOWED_ORIGIN && (!origin || origin.endsWith('.vercel.app'))) {
+        corsOrigin = origin || '*';
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────
-    function getGoogtransCookie() {
-        var m = document.cookie.match(/(?:^|;\s*)googtrans=([^;]*)/);
-        return m ? decodeURIComponent(m[1]) : null;
+    if (corsOrigin) {
+        res.setHeader('Access-Control-Allow-Origin', corsOrigin);
     }
-
-    function setGoogtransCookie(lang) {
-        var value = '/en/' + lang;
-        var hostname = location.hostname;
-        document.cookie = 'googtrans=' + value + '; path=/';
-        if (hostname && hostname !== 'localhost') {
-            document.cookie = 'googtrans=' + value + '; path=/; domain=' + hostname;
-        }
-    }
-
-    async function getCountryCode() {
-        try {
-            var res = await fetch('https://ipinfo.io/json?token=5a58a2d85996e3');
-            var data = await res.json();
-            return (data.country || '').toUpperCase();
-        } catch (e) {
-            try {
-                var res2 = await fetch('https://ipinfo.io/json?token=5a58a2d85996e3');
-                var data2 = await res2.json();
-                return (data2.country_code || '').toUpperCase();
-            } catch (e2) {
-                return '';
-            }
-        }
-    }
-
-    // ── Wait for Google Translate to finish ────────────────────────────
-    function waitForTranslation(timeout) {
-        return new Promise(function (resolve) {
-            // Google Translate adds class "translated-ltr" / "translated-rtl" to <html>
-            var html = document.documentElement;
-            if (/translated-(ltr|rtl)/.test(html.className)) {
-                return resolve();
-            }
-            var timer = setTimeout(resolve, timeout || 5000);
-            var obs = new MutationObserver(function () {
-                if (/translated-(ltr|rtl)/.test(html.className)) {
-                    clearTimeout(timer);
-                    obs.disconnect();
-                    resolve();
-                }
-            });
-            obs.observe(html, { attributes: true, attributeFilter: ['class'] });
-        });
-    }
-
-    // ── Main ──────────────────────────────────────────────────────────────
-    async function run() {
-        var existing = getGoogtransCookie();
-
-        // Cookie already set → if not English, wait for translation; then hide overlay
-        if (existing && existing !== '/en/' && existing !== '/en/undefined') {
-            if (existing !== '/en/en') {
-                await waitForTranslation(6000);
-            }
-            removeOverlay();
-            return;
-        }
-
-        // First visit: detect country and set cookie
-        var countryCode = await getCountryCode();
-        var targetLang = countryCode ? LANG_MAP[countryCode] : null;
-
-        if (!targetLang || targetLang === 'en') {
-            // English-speaking or unknown country → no translation needed
-            if (targetLang === 'en') {
-                setGoogtransCookie('en');
-            }
-            removeOverlay();
-            return;
-        }
-
-        setGoogtransCookie(targetLang);
-        location.reload();
-    }
-
-    // Run after body is ready
-    if (document.body) {
-        run();
-    } else {
-        document.addEventListener('DOMContentLoaded', run);
-    }
-})();
+    res.setHeader('Vary', 'Origin');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.json({ country, lang });
+};
